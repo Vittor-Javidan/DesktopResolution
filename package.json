@@ -1,13 +1,16 @@
-{
+ {
   "name": "desktop-frame-rate-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Windows system-tray app for changing the primary display refresh rate",
+  "description": "Windows tray app and desktop context menu for changing display refresh rates",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "npm run build:shell-extension && tsc --project tsconfig.json",
+    "build:shell-extension": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/build-shell-extension.ps1",
     "start": "npm run build && electron .",
-    "package": "npm run build && electron-builder --win nsis"
+    "package": "npm run build && electron-builder --win nsis",
+    "register:context-menu": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/register-context-menu.ps1 -AssemblyPath resources/RefreshRateShellExtension.dll",
+    "unregister:context-menu": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/unregister-context-menu.ps1"
   },
   "devDependencies": {
     "@types/node": "^22.18.6",
@@ -27,8 +30,16 @@
     ],
     "extraResources": [
       {
-        "from": "resources/display-refresh.ps1",
-        "to": "display-refresh.ps1"
+        "from": "resources/RefreshRateShellExtension.dll",
+        "to": "RefreshRateShellExtension.dll"
+      },
+      {
+        "from": "scripts/register-context-menu.ps1",
+        "to": "register-context-menu.ps1"
+      },
+      {
+        "from": "scripts/unregister-context-menu.ps1",
+        "to": "unregister-context-menu.ps1"
       },
       {
         "from": "assets/tray.png",
@@ -43,11 +54,12 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false
+      "allowToChangeInstallationDirectory": false,
+      "include": "build/installer.nsh"
     }
   },
   "allowScripts": {
-    "electron@38.8.6": true,
+    "electron@45.0.0": true,
     "electron-winstaller@5.4.0": true
   }
 }
