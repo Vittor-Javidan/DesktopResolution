@@ -32,11 +32,26 @@ DesktopResolution runs in the Windows notification area without a main window.
 Left- or right-click its tray icon to open the display menu. The tooltip shows
 the primary display's current resolution and refresh rate.
 
-The app reads and caches display information at startup. Use **Atualizar
-monitores** to query the displays and available modes again. If the app cannot
-read the display information, the menu offers an option to try again. Choose
-**Sair** to close the app.
+The app reads and caches display information at startup. Use **Refresh
+displays** (or **Atualizar monitores**) to query the displays and available
+modes again. If the app cannot read the display information, the menu offers
+an option to try again. Choose **Quit** (or **Sair**) to close the app.
 
-The tray menu is currently displayed in Portuguese.
+The tray menu uses the first preferred system language supported by the app.
+English (United States) is the default, and Brazilian Portuguese is also
+included. If no supported language is detected, the app uses English.
+
+## Adding a translation
+
+Create a separate file for the locale, such as
+[`src/translations/fr-fr.ts`](./src/translations/fr-fr.ts), and export its
+messages using the `TranslationMessages` type from
+[`src/translations/types.ts`](./src/translations/types.ts). Then import that
+file and add its lowercase language-region code to the translations object in
+[`src/translations/index.ts`](./src/translations/index.ts). TypeScript checks
+that every locale provides all messages. Dynamic values use placeholders such
+as `{mode}`. At startup, the app checks preferred system languages in order,
+using an exact locale when available or another available locale with the same
+language code. If none match, it falls back to `en-us`.
 
 When installed, the app is configured to start automatically with Windows.

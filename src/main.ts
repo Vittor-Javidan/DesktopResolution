@@ -2,6 +2,12 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
+  formatTranslation,
+  resolveLocale,
+  translations,
+  type TranslationDictionary,
+} from "./translations/index.js";
+import {
   app,
   dialog,
   Menu,
@@ -39,6 +45,7 @@ type DisplayAction =
 const executeFile = promisify(execFile);
 let tray: Tray | undefined;
 let isLoadingMenu = false;
+let currentTranslations: TranslationDictionary = translations["en-us"];
 let cachedDisplays: DisplayInfo[] | undefined;
 let displayCacheVersion = 0;
 let displayListPromise: Promise<DisplayInfo[]> | undefined;
@@ -57,7 +64,7 @@ function isRefreshRate(value: unknown): value is number {
 
 function parseResolutionInfo(value: unknown): ResolutionInfo {
   if (!isRecord(value)) {
-    throw new Error("O Windows retornou dados inválidos de resolução.");
+    throw new Error(currentTranslations.errors.invalidResolutionData);
   }
 
   const { width, height, availableRefreshRates } = value;
@@ -68,7 +75,7 @@ function parseResolutionInfo(value: unknown): ResolutionInfo {
     availableRefreshRates.length === 0 ||
     !availableRefreshRates.every(isRefreshRate)
   ) {
-    throw new Error("O Windows retornou dados incompletos de resolução.");
+    throw new Error(currentTranslations.errors.incompleteResolutionData);
   }
 
   return {
@@ -82,7 +89,7 @@ function parseResolutionInfo(value: unknown): ResolutionInfo {
 
 function parseDisplayInfo(value: unknown): DisplayInfo {
   if (!isRecord(value)) {
-    throw new Error("O Windows retornou dados inválidos do monitor.");
+    throw new Error(currentTranslations.errors.invalidDisplayData);
   }
 
   const {
@@ -106,7 +113,7 @@ function parseDisplayInfo(value: unknown): DisplayInfo {
     !Array.isArray(availableResolutions) ||
     availableResolutions.length === 0
   ) {
-    throw new Error("O Windows retornou dados incompletos do monitor.");
+    throw new Error(currentTranslations.errors.incompleteDisplayData);
   }
 
   const parsedResolutions = availableResolutions.map(parseResolutionInfo);
@@ -117,7 +124,7 @@ function parseDisplayInfo(value: unknown): DisplayInfo {
   if (
     !currentResolution?.availableRefreshRates.includes(currentRefreshRate)
   ) {
-    throw new Error("O modo atual não consta entre as opções disponíveis.");
+    throw new Error(currentTranslations.errors.unavailableCurrentMode);
   }
 
   return {
@@ -133,10 +140,10 @@ function parseDisplayInfo(value: unknown): DisplayInfo {
 
 function parseDisplayList(value: unknown): DisplayInfo[] {
   if (!isRecord(value) || !Array.isArray(value.displays)) {
-    throw new Error("O Windows retornou uma lista de monitores inválida.");
+    throw new Error(currentTranslations.errors.invalidDisplayList);
   }
   if (value.displays.length === 0) {
-    throw new Error("Nenhum monitor ativo foi encontrado.");
+    throw new Error(currentTranslations.errors.noActiveDisplays);
   }
 
   return value.displays.map(parseDisplayInfo);
@@ -182,7 +189,7 @@ async function executeDisplayAction(action: DisplayAction): Promise<DisplayInfo[
   });
   const output = stdout.trim();
   if (!output) {
-    throw new Error("O utilitário do Windows não retornou dados dos monitores.");
+    throw new Error(currentTranslations.errors.emptyDisplayOutput);
   }
 
   return parseDisplayList(JSON.parse(output) as unknown);
@@ -248,6 +255,7 @@ function refreshDisplayCache(): Promise<DisplayInfo[]> {
 }
 
 function createDisplayMenuItem(display: DisplayInfo): MenuItemConstructorOptions {
+  const { menu } = currentTranslations;
   const resolutionItems = display.availableResolutions.map(
     (resolution): MenuItemConstructorOptions => {
       const isCurrentResolution =
@@ -255,14 +263,21 @@ function createDisplayMenuItem(display: DisplayInfo): MenuItemConstructorOptions
         resolution.height === display.currentHeight;
 
       return {
-        label: `${resolution.width} x ${resolution.height}${isCurrentResolution ? " (atual)" : ""}`,
+        label: formatTranslation(menu.resolutionLabel, {
+          width: resolution.width,
+          height: resolution.height,
+          current: isCurrentResolution ? menu.currentMarker : "",
+        }),
         submenu: resolution.availableRefreshRates.map(
           (rate): MenuItemConstructorOptions => {
             const isCurrentMode =
               isCurrentResolution && rate === display.currentRefreshRate;
 
             return {
-              label: `${rate} Hz${isCurrentMode ? " (atual)" : ""}`,
+              label: formatTranslation(menu.refreshRateLabel, {
+                rate,
+                current: isCurrentMode ? menu.currentMarker : "",
+              }),
               type: "radio",
               checked: isCurrentMode,
               click: () => {
@@ -283,10 +298,15 @@ function createDisplayMenuItem(display: DisplayInfo): MenuItemConstructorOptions
   );
 
   return {
-    label: `${display.displayName}${display.isPrimary ? " - principal" : ""}`,
+    label: formatTranslation(menu.displayLabel, {
+      name: display.displayName,
+      primary: display.isPrimary ? menu.primaryMarker : "",
+    }),
     submenu: [
       {
-        label: `Atual: ${formatCurrentMode(display)}`,
+        label: formatTranslation(menu.currentMode, {
+          mode: formatCurrentMode(display),
+        }),
         enabled: false,
       },
       { type: "separator" },
@@ -296,33 +316,35 @@ function createDisplayMenuItem(display: DisplayInfo): MenuItemConstructorOptions
 }
 
 function createDisplayMenu(displays: DisplayInfo[]): Menu {
+  const { menu } = currentTranslations;
   return Menu.buildFromTemplate([
     ...displays.map(createDisplayMenuItem),
     { type: "separator" },
     {
-      label: "Atualizar monitores",
+      label: menu.refreshDisplays,
       click: () => {
         void openDisplayMenu(true);
       },
     },
-    { label: "Sair", role: "quit" },
+    { label: menu.quit, role: "quit" },
   ]);
 }
 
 function createErrorMenu(error: unknown): Menu {
+  const { menu } = currentTranslations;
   const details = getErrorMessage(error).replace(/\s+/g, " ").slice(0, 160);
 
   return Menu.buildFromTemplate([
-    { label: "Falha ao consultar os monitores", enabled: false },
-    { label: details || "Erro desconhecido.", enabled: false },
+    { label: menu.displayQueryFailed, enabled: false },
+    { label: details || menu.unknownError, enabled: false },
     { type: "separator" },
     {
-      label: "Tentar novamente",
+      label: menu.retry,
       click: () => {
         void openDisplayMenu(true);
       },
     },
-    { label: "Sair", role: "quit" },
+    { label: menu.quit, role: "quit" },
   ]);
 }
 
@@ -375,7 +397,7 @@ async function changeDisplayMode(
     updateDisplayCache(displays);
   } catch (error) {
     dialog.showErrorBox(
-      "Não foi possível alterar o modo do monitor",
+      currentTranslations.errors.changeDisplayModeFailed,
       getErrorMessage(error),
     );
   }
@@ -387,7 +409,11 @@ function createTray(): void {
     : path.join(app.getAppPath(), "assets", "tray.png");
   const icon = nativeImage.createFromPath(iconPath);
   if (icon.isEmpty()) {
-    throw new Error(`Não foi possível carregar o ícone da bandeja: ${iconPath}`);
+    throw new Error(
+      formatTranslation(currentTranslations.errors.trayIconLoadFailed, {
+        path: iconPath,
+      }),
+    );
   }
 
   tray = new Tray(icon);
@@ -408,21 +434,24 @@ app.on("before-quit", () => {
 void app
   .whenReady()
   .then(() => {
+    currentTranslations =
+      translations[resolveLocale(app.getPreferredSystemLanguages())];
+
     if (process.platform !== "win32") {
-      throw new Error("Este aplicativo está disponível somente no Windows.");
+      throw new Error(currentTranslations.errors.windowsOnly);
     }
 
     createTray();
     void refreshDisplayCache().catch((error: unknown) => {
       console.error(
-        "Falha ao carregar as opções dos monitores na inicialização:",
+        currentTranslations.errors.startupDisplayLoadFailed,
         getErrorMessage(error),
       );
     });
   })
   .catch((error: unknown) => {
     dialog.showErrorBox(
-      "Falha ao iniciar o DesktopResolution",
+      currentTranslations.errors.startupFailed,
       getErrorMessage(error),
     );
     app.quit();
