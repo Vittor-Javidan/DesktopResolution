@@ -1,15 +1,13 @@
- {
+{
   "name": "desktop-frame-rate-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Windows tray app and desktop context menu for changing display refresh rates",
+  "description": "Windows tray app for changing display resolutions and refresh rates",
   "main": "dist/main.js",
   "scripts": {
-    "build": "npm run build:shell-extension && tsc --project tsconfig.json",
-    "build:shell-extension": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/build-shell-extension.ps1",
+    "build": "tsc --project tsconfig.json",
     "start": "npm run build && electron .",
     "package": "npm run build && electron-builder --win nsis",
-    "register:context-menu": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/register-context-menu.ps1 -AssemblyPath resources/RefreshRateShellExtension.dll",
     "unregister:context-menu": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/unregister-context-menu.ps1"
   },
   "devDependencies": {
@@ -30,12 +28,8 @@
     ],
     "extraResources": [
       {
-        "from": "resources/RefreshRateShellExtension.dll",
-        "to": "RefreshRateShellExtension.dll"
-      },
-      {
-        "from": "scripts/register-context-menu.ps1",
-        "to": "register-context-menu.ps1"
+        "from": "resources/display-refresh.ps1",
+        "to": "display-refresh.ps1"
       },
       {
         "from": "scripts/unregister-context-menu.ps1",
