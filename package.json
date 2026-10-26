@@ -1,0 +1,53 @@
+{
+  "name": "desktop-frame-rate-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows system-tray app for changing the primary display refresh rate",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "start": "npm run build && electron .",
+    "package": "npm run build && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.vittor.desktopframerateapp",
+    "productName": "Desktop Frame Rate App",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/display-refresh.ps1",
+        "to": "display-refresh.ps1"
+      },
+      {
+        "from": "assets/tray.png",
+        "to": "tray.png"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    }
+  },
+  "allowScripts": {
+    "electron@38.8.6": true,
+    "electron-winstaller@5.4.0": true
+  }
+}
