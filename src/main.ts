@@ -39,6 +39,9 @@ type DisplayAction =
 const executeFile = promisify(execFile);
 let tray: Tray | undefined;
 let isLoadingMenu = false;
+let cachedDisplays: DisplayInfo[] | undefined;
+let displayCacheVersion = 0;
+let displayListPromise: Promise<DisplayInfo[]> | undefined;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -212,8 +215,36 @@ function updateTrayToolTip(displays: DisplayInfo[]): void {
   tray.setToolTip(
     primaryDisplay
       ? `${primaryDisplay.displayName}: ${formatCurrentMode(primaryDisplay)}`
-      : "Desktop Frame Rate App",
+      : "DesktopResolution",
   );
+}
+
+function updateDisplayCache(displays: DisplayInfo[]): void {
+  cachedDisplays = displays;
+  displayCacheVersion += 1;
+  updateTrayToolTip(displays);
+}
+
+function refreshDisplayCache(): Promise<DisplayInfo[]> {
+  if (displayListPromise) {
+    return displayListPromise;
+  }
+
+  const cacheVersion = displayCacheVersion;
+  const refreshPromise = executeDisplayAction({ type: "list" })
+    .then((displays) => {
+      if (cacheVersion === displayCacheVersion) {
+        updateDisplayCache(displays);
+      }
+      return cachedDisplays ?? displays;
+    })
+    .finally(() => {
+      if (displayListPromise === refreshPromise) {
+        displayListPromise = undefined;
+      }
+    });
+  displayListPromise = refreshPromise;
+  return refreshPromise;
 }
 
 function createDisplayMenuItem(display: DisplayInfo): MenuItemConstructorOptions {
@@ -271,7 +302,7 @@ function createDisplayMenu(displays: DisplayInfo[]): Menu {
     {
       label: "Atualizar monitores",
       click: () => {
-        void openDisplayMenu();
+        void openDisplayMenu(true);
       },
     },
     { label: "Sair", role: "quit" },
@@ -288,29 +319,43 @@ function createErrorMenu(error: unknown): Menu {
     {
       label: "Tentar novamente",
       click: () => {
-        void openDisplayMenu();
+        void openDisplayMenu(true);
       },
     },
     { label: "Sair", role: "quit" },
   ]);
 }
 
-async function openDisplayMenu(): Promise<void> {
+function openDisplayMenu(forceRefresh = false): void {
   const currentTray = tray;
-  if (!currentTray || isLoadingMenu) {
+  if (!currentTray) {
+    return;
+  }
+
+  if (!forceRefresh && cachedDisplays) {
+    currentTray.popUpContextMenu(createDisplayMenu(cachedDisplays));
+    return;
+  }
+
+  if (isLoadingMenu) {
     return;
   }
 
   isLoadingMenu = true;
-  try {
-    const displays = await executeDisplayAction({ type: "list" });
-    updateTrayToolTip(displays);
-    currentTray.popUpContextMenu(createDisplayMenu(displays));
-  } catch (error) {
-    currentTray.popUpContextMenu(createErrorMenu(error));
-  } finally {
-    isLoadingMenu = false;
-  }
+  void refreshDisplayCache()
+    .then((displays) => {
+      if (tray === currentTray) {
+        currentTray.popUpContextMenu(createDisplayMenu(displays));
+      }
+    })
+    .catch((error: unknown) => {
+      if (tray === currentTray) {
+        currentTray.popUpContextMenu(createErrorMenu(error));
+      }
+    })
+    .finally(() => {
+      isLoadingMenu = false;
+    });
 }
 
 async function changeDisplayMode(
@@ -327,7 +372,7 @@ async function changeDisplayMode(
       height,
       refreshRate,
     });
-    updateTrayToolTip(displays);
+    updateDisplayCache(displays);
   } catch (error) {
     dialog.showErrorBox(
       "Não foi possível alterar o modo do monitor",
@@ -346,7 +391,7 @@ function createTray(): void {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip("Desktop Frame Rate App");
+  tray.setToolTip("DesktopResolution");
   tray.on("click", () => {
     void openDisplayMenu();
   });
@@ -368,10 +413,16 @@ void app
     }
 
     createTray();
+    void refreshDisplayCache().catch((error: unknown) => {
+      console.error(
+        "Falha ao carregar as opções dos monitores na inicialização:",
+        getErrorMessage(error),
+      );
+    });
   })
   .catch((error: unknown) => {
     dialog.showErrorBox(
-      "Falha ao iniciar o Desktop Frame Rate App",
+      "Falha ao iniciar o DesktopResolution",
       getErrorMessage(error),
     );
     app.quit();

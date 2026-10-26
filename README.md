@@ -1,4 +1,4 @@
-# Desktop Frame Rate App
+# DesktopResolution
 
 Aplicativo Electron para Windows que fica na bandeja do sistema. Clique com o
 botão esquerdo ou direito no ícone para abrir a lista de monitores conectados.
@@ -10,7 +10,9 @@ atuais aparecem marcadas.
 Ao selecionar uma taxa, o aplicativo aplica a combinação de resolução e taxa
 somente ao monitor escolhido, preservando a profundidade de cor atual e
 revalidando o modo antes de aplicá-lo. As opções são consultadas novamente
-sempre que o menu é aberto.
+ao iniciar o aplicativo e ficam em cache para abrir o menu imediatamente. Use
+**Atualizar monitores** para consultar as opções novamente; após uma troca de
+modo, o cache é atualizado automaticamente.
 
 O instalador remove registros do antigo menu de contexto durante a atualização
 e ao desinstalar, configura o aplicativo para iniciar automaticamente com o

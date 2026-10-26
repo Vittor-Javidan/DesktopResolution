@@ -1,6 +1,6 @@
 {
-  "name": "desktop-frame-rate-app",
-  "version": "1.1.0",
+  "name": "desktopresolution",
+  "version": "1.1.1",
   "private": true,
   "description": "Windows tray app for changing display resolutions and refresh rates",
   "main": "dist/main.js",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.vittor.desktopframerateapp",
-    "productName": "Desktop Frame Rate App",
+    "productName": "DesktopResolution",
     "directories": {
       "output": "release"
     },
