@@ -1,43 +1,42 @@
 # DesktopResolution
 
-Aplicativo Electron para Windows que fica na bandeja do sistema. Clique com o
-botão esquerdo ou direito no ícone para abrir a lista de monitores conectados.
-Os monitores aparecem como **Display 1**, **Display 2** etc.; o monitor principal
-é identificado com **- principal**. Cada monitor mostra apenas os modos de
-resolução e taxa que o Windows confirma como compatíveis. A resolução e a taxa
-atuais aparecem marcadas.
+DesktopResolution is a Windows utility shortcut for viewing and changing the resolution
+and refresh rate of connected displays from the system tray. It provides quick
+access to display modes without opening Windows Settings.
 
-Ao selecionar uma taxa, o aplicativo aplica a combinação de resolução e taxa
-somente ao monitor escolhido, preservando a profundidade de cor atual e
-revalidando o modo antes de aplicá-lo. As opções são consultadas novamente
-ao iniciar o aplicativo e ficam em cache para abrir o menu imediatamente. Use
-**Atualizar monitores** para consultar as opções novamente; após uma troca de
-modo, o cache é atualizado automaticamente.
+## Display information
 
-O instalador remove registros do antigo menu de contexto durante a atualização
-e ao desinstalar, configura o aplicativo para iniciar automaticamente com o
-Windows e remove essa configuração ao desinstalar.
+The app detects active displays and lists them separately in the tray menu as
+**Display 1**, **Display 2**, and so on. The primary display is marked. Each
+display shows its current resolution and refresh rate, along with the other
+resolutions and refresh rates Windows reports as compatible with that display
+at the current color depth.
 
-## Desenvolvimento
+The current resolution and refresh rate are marked in the menu, so you can see
+which mode is active before making a change.
 
-Requisitos: Windows 64 bits, Node.js e npm.
+## Changing a display mode
 
-```powershell
-npm install
-npm run build
-npm start
-```
+Open a display's submenu, choose a resolution, then choose a refresh rate. The
+app applies that combination to the selected display only, preserves its
+current color depth, and leaves the other displays unchanged.
 
-Para remover registros do menu de contexto de uma instalação anterior:
+Before applying a mode, DesktopResolution checks that it is still available and
+asks Windows to test its compatibility. If Windows or the display driver
+rejects the change, the app shows an error. After a successful change, it
+updates the display information and tray tooltip.
 
-```powershell
-npm run unregister:context-menu
-```
+## Using the system tray
 
-Para gerar um instalador Windows:
+DesktopResolution runs in the Windows notification area without a main window.
+Left- or right-click its tray icon to open the display menu. The tooltip shows
+the primary display's current resolution and refresh rate.
 
-```powershell
-npm run package
-```
+The app reads and caches display information at startup. Use **Atualizar
+monitores** to query the displays and available modes again. If the app cannot
+read the display information, the menu offers an option to try again. Choose
+**Sair** to close the app.
 
-O instalador NSIS fica na pasta `release`.
+The tray menu is currently displayed in Portuguese.
+
+When installed, the app is configured to start automatically with Windows.
